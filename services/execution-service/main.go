@@ -21,26 +21,28 @@ func main() {
 
 	ollama := ollama.NewClient("http://ollama:11434")
 
-	// Subscribe to tasks
 	_, err = js.Subscribe("agents.tasks.*", func(msg *nats.Msg) {
 		var task models.Task
-		// unmarshal...
-		fmt.Printf("Executing task: %s\n", task.Prompt)
+		fmt.Printf("[Tool Calling] Executing: %s\n", task.Prompt)
 
-		// Simple ReAct simulation
-		response, _ := ollama.Generate(ollama.GenerateRequest{
-			Model:  "llama3",
+		tools := ollama.GetExampleTools()
+
+		_, err := ollama.Generate(ollama.GenerateRequest{
+			Model:  "llama3.1",
 			Prompt: task.Prompt,
-			Stream: false,
+			Tools:  tools,
 		})
+		if err != nil {
+			log.Println("Error:", err)
+		}
 
-		fmt.Println("Ollama response:", response)
+		fmt.Println("Tool calling cycle completed")
 	})
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println("Execution service with ReAct started...")
+	log.Println("Execution service with Tool Calling ready...")
 	select {}
 }
