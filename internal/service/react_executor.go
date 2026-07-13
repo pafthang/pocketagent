@@ -9,7 +9,7 @@ import (
 	"github.com/pafthang/pocketagent/services/ollama-client/ollama"
 )
 
-// ReActExecutor with real tool execution
+// ReActExecutor - полноценная реализация с реальным выполнением инструментов
 type ReActExecutor struct {
 	Ollama   *ollama.Client
 	Tools    []ollama.Tool
@@ -20,30 +20,38 @@ func NewReActExecutor(ollamaClient *ollama.Client, tools []ollama.Tool) *ReActEx
 	return &ReActExecutor{
 		Ollama:   ollamaClient,
 		Tools:    tools,
-		MaxSteps: 6,
+		MaxSteps: 8,
 	}
 }
 
-// Execute runs ReAct with real tool execution
+// ReActResult содержит результат выполнения
+
 type ReActResult struct {
 	FinalAnswer string
 	Steps       []string
 	ToolCalls   []string
+	Observations []string
 }
 
+// Execute выполняет полноценный ReAct цикл с реальными инструментами
 func (e *ReActExecutor) Execute(ctx context.Context, prompt string) (ReActResult, error) {
 	var result ReActResult
 	var history strings.Builder
 
-	history.WriteString("Thought: I will solve this using available tools when needed.\n")
+	history.WriteString("Thought: Я буду использовать инструменты для решения задачи.\n")
 
 	for step := 0; step < e.MaxSteps; step++ {
-		fullPrompt := fmt.Sprintf(`%s
+		fullPrompt := fmt.Sprintf(`
+Задача: %s
 
-Current history:
+История:
 %s
 
-Respond with Thought, Action (tool_name args), or Final Answer.`, prompt, history.String())
+Инструкция: Отвечай только в формате:
+- Thought: ...
+- Action: tool_name аргументы
+- Final Answer: ...
+`, prompt, history.String())
 
 		resp, err := e.Ollama.Generate(ollama.GenerateRequest{
 			Model:  "llama3.1",
@@ -58,17 +66,20 @@ Respond with Thought, Action (tool_name args), or Final Answer.`, prompt, histor
 		result.Steps = append(result.Steps, stepLog)
 		history.WriteString(stepLog + "\n")
 
-		// Check if model wants to call a tool
+		// Если модель хочет вызвать инструмент
 		if strings.Contains(resp, "Action:") {
 			toolName, args := parseToolCall(resp)
-			result.ToolCalls = append(result.ToolCalls, toolName)
+			result.ToolCalls = append(result.ToolCalls, fmt.Sprintf("%s(%s)", toolName, args))
 
-			// Execute real tool
+			// === РЕАЛЬНОЕ ВЫПОЛНЕНИЕ ИНСТРУМЕНТА ===
 			observation := executeRealTool(toolName, args)
+			result.Observations = append(result.Observations, observation)
+
 			history.WriteString("Observation: " + observation + "\n")
 			result.Steps = append(result.Steps, "Observation: "+observation)
 		}
 
+		// Если модель дала финальный ответ
 		if strings.Contains(resp, "Final Answer:") {
 			result.FinalAnswer = extractFinalAnswer(resp)
 			break
@@ -78,35 +89,42 @@ Respond with Thought, Action (tool_name args), or Final Answer.`, prompt, histor
 	return result, nil
 }
 
+// Вспомогательные функции
+
 func parseToolCall(text string) (string, string) {
-	// Very simple parser
 	if idx := strings.Index(text, "Action:"); idx != -1 {
-		remaining := text[idx+7:]
+		remaining := strings.TrimSpace(text[idx+7:])
 		parts := strings.SplitN(remaining, " ", 2)
-		if len(parts) == 2 {
-			return strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+		if len(parts) >= 1 {
+			tool := strings.TrimSpace(parts[0])
+			args := ""
+			if len(parts) == 2 {
+				args = strings.TrimSpace(parts[1])
+			}
+			return tool, args
 		}
-		return strings.TrimSpace(parts[0]), ""
 	}
-	return "unknown", ""
+	return "unknown_tool", ""
 }
 
 func executeRealTool(toolName, args string) string {
-	switch toolName {
-	case "web_search", "search_web":
-		result, err := tools.WebSearch(args)
+	switch strings.ToLower(toolName) {
+	case "web_search", "search_web", "search":
+		res, err := tools.WebSearch(args)
 		if err != nil {
-			return "Error searching web: " + err.Error()
+			return "Error during web search: " + err.Error()
 		}
-		return result
-	case "scrape_page", "scrape":
-		result, err := tools.ScrapePage(args)
+		return res
+
+	case "scrape_page", "scrape", "browse":
+		res, err := tools.ScrapePage(args)
 		if err != nil {
 			return "Error scraping page: " + err.Error()
 		}
-		return result
+		return res
+
 	default:
-		return fmt.Sprintf("Tool '%s' executed with args: %s (simulated)", toolName, args)
+		return fmt.Sprintf("Tool '%s' called with args '%s' (no real implementation yet)", toolName, args)
 	}
 }
 
