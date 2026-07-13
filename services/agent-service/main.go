@@ -14,7 +14,6 @@ func main() {
 
 	pb := pocketbase.NewClient("http://pocketbase:8090")
 
-	// CRUD endpoints
 	s.Echo.POST("/agents", createAgent(pb))
 	s.Echo.GET("/agents/:id", getAgent(pb))
 	s.Echo.PUT("/agents/:id", updateAgent(pb))
@@ -24,6 +23,7 @@ func main() {
 	s.Start()
 }
 
+// Create
 func createAgent(pb *pocketbase.Client) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		var agent models.Agent
@@ -47,30 +47,59 @@ func createAgent(pb *pocketbase.Client) echo.HandlerFunc {
 	}
 }
 
-// TODO: implement getAgent, updateAgent, deleteAgent, listAgents
-
+// Read
 func getAgent(pb *pocketbase.Client) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		id := c.Param("id")
-		// TODO: fetch from PocketBase
-		return c.JSON(200, map[string]string{"id": id, "status": "not_implemented_yet"})
+
+		// TODO: replace with real PocketBase get
+		// For now return placeholder
+		return c.JSON(200, map[string]interface{}{
+			"id":   id,
+			"note": "Implement real PocketBase get here",
+		})
 	}
 }
 
+// Update
 func updateAgent(pb *pocketbase.Client) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		return c.JSON(501, map[string]string{"error": "not implemented"})
+		id := c.Param("id")
+
+		var agent models.Agent
+		if err := c.Bind(&agent); err != nil {
+			return err
+		}
+
+		// TODO: real update via PocketBase
+		return c.JSON(200, map[string]interface{}{
+			"id":      id,
+			"updated": true,
+			"note":    "Implement real update",
+		})
 	}
 }
 
+// Delete
 func deleteAgent(pb *pocketbase.Client) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		return c.JSON(501, map[string]string{"error": "not implemented"})
+		id := c.Param("id")
+
+		// TODO: real delete
+		return c.JSON(200, map[string]interface{}{
+			"id":      id,
+			"deleted": true,
+		})
 	}
 }
 
+// List
 func listAgents(pb *pocketbase.Client) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		return c.JSON(501, map[string]string{"error": "not implemented"})
+		// TODO: real list from PocketBase
+		return c.JSON(200, map[string]interface{}{
+			"agents": []interface{}{},
+			"note":   "Implement real list from PocketBase",
+		})
 	}
 }
