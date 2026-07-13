@@ -1,12 +1,13 @@
 services:
   nats:
-    image: nats:2.10-alpine
-    command: -js -m 8222
+    build: ./services/nats-server
     ports:
       - "4222:4222"
       - "8222:8222"
     volumes:
       - nats_data:/data
+    environment:
+      - NATS_PORT=4222
 
   pocketbase:
     image: pocketbase/pocketbase:latest
