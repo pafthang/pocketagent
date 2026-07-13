@@ -2,39 +2,49 @@ package service
 
 import (
 	"context"
-	"net/http"
 	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/pafthang/pocketagent/internal/common"
 )
 
-// BaseServer provides common server setup
-type BaseServer struct {
+// Server is a base microservice template
+type Server struct {
 	Echo   *echo.Echo
 	Config *common.Config
 	Logger *common.Logger
+	Name   string
 }
 
-func NewBaseServer(name string) *BaseServer {
+func New(name string) *Server {
 	cfg := common.LoadConfig()
 	logger := common.NewLogger(name)
 
 	e := echo.New()
 	e.HideBanner = true
 
-	return &BaseServer{
+	common.SetupMiddleware(e, name)
+
+	return &Server{
 		Echo:   e,
 		Config: cfg,
 		Logger: logger,
+		Name:   name,
 	}
 }
 
-func (s *BaseServer) Start(port string) error {
+// Start starts the server with graceful shutdown
+func (s *Server) Start() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go common.GracefulShutdown(cancel, 5*time.Second)
+	go common.GracefulShutdown(cancel, 10*time.Second)
 
-	return s.Echo.Start(":" + port)
+	s.Logger.Printf("Starting %s on port %s", s.Name, s.Config.Port)
+	return s.Echo.Start(":" + s.Config.Port)
+}
+
+// AddHealth adds /health endpoint
+func (s *Server) AddHealth() {
+	s.Echo.GET("/health", common.HealthHandler)
 }
