@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/nats-io/nats.go"
@@ -14,8 +15,17 @@ func main() {
 	}
 	defer nc.Close()
 
-	log.Println("Task Orchestrator (Project Manager) started")
+	log.Println("Project Manager (Task Orchestrator) started")
 
-	// TODO: Subscribe to high-level tasks and delegate
+	// Subscribe to high-level tasks
+	_, err = nc.Subscribe("agents.orchestrator.commands", func(msg *nats.Msg) {
+		fmt.Println("[Orchestrator] Received high-level task")
+		// TODO: break into subtasks and delegate to execution-service
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	select {}
 }
