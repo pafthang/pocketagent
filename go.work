@@ -6,4 +6,5 @@ use (
 	./services/task-orchestrator
 	./services/ollama-client
 	./services/nats-server
+	./services/pocketbase-server
 )
