@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 
@@ -20,29 +19,21 @@ func main() {
 	js, _ := nc.JetStream()
 
 	ollama := ollama.NewClient("http://ollama:11434")
+	agent := NewReActAgent(ollama)
 
 	_, err = js.Subscribe("agents.tasks.*", func(msg *nats.Msg) {
 		var task models.Task
-		fmt.Printf("[Tool Calling] Executing: %s\n", task.Prompt)
+		fmt.Printf("[ReAct] Starting task: %s\n", task.Prompt)
 
-		tools := ollama.GetExampleTools()
+		result := agent.Run(task.Prompt)
 
-		_, err := ollama.Generate(ollama.GenerateRequest{
-			Model:  "llama3.1",
-			Prompt: task.Prompt,
-			Tools:  tools,
-		})
-		if err != nil {
-			log.Println("Error:", err)
-		}
-
-		fmt.Println("Tool calling cycle completed")
+		fmt.Println("ReAct Result:\n", result)
 	})
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println("Execution service with Tool Calling ready...")
+	log.Println("Execution service with full ReAct loop ready...")
 	select {}
 }
