@@ -4,13 +4,31 @@ import (
 	"context"
 	"log/slog"
 	"os"
+
+	"github.com/spf13/viper"
 )
 
-// NewSlogLogger creates structured logger with slog
+// NewSlogLogger creates structured logger with configurable level
 func NewSlogLogger(service string) *slog.Logger {
+	level := getLogLevel()
+
 	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
+		Level: level,
 	})).With("service", service)
+}
+
+func getLogLevel() slog.Level {
+	lvl := viper.GetString("LOG_LEVEL")
+	switch lvl {
+	case "debug":
+		return slog.LevelDebug
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
 }
 
 // LogWithCorrelation adds correlation ID to log
