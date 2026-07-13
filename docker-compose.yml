@@ -24,6 +24,16 @@ services:
     ports:
       - "8080:8080"
 
+  execution-service:
+    build: ./services/execution-service
+    depends_on:
+      - nats
+
+  task-orchestrator:
+    build: ./services/task-orchestrator
+    depends_on:
+      - nats
+
 volumes:
   nats_data:
   pocketbase_data:
