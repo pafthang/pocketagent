@@ -1,88 +1,58 @@
 # pocketagent — План разработки и статус
 
-## Общий статус проекта (на 14 июля 2026)
+## Общий статус проекта (обновлено 14 июля 2026)
 
-**Проект:** `pocketagent` — Платформа управления AI-агентами на Go + Ollama + PocketBase + NATS
+**Проект:** `pocketagent` — Платформа управления AI-агентами
 
-### Что уже реализовано (высокий уровень)
+### ✅ Что полностью закрыто
 
-- ✅ Микросервисная архитектура
-- ✅ Embedded NATS + JetStream
-- ✅ Embedded PocketBase
-- ✅ Общие пакеты `internal/common` и `internal/service`
-- ✅ Полная traceability (Correlation ID)
-- ✅ Защита от ошибок (Retry + Circuit Breaker)
-- ✅ Мониторинг (Prometheus Metrics)
-- ✅ Structured Logging (slog)
-- ✅ ReAct Executor с реальными tool calls (web search + scraper)
-- ✅ WebSocket streaming
-- ✅ Отдельный `agent-service`
+- Полноценный **ReAct с реальными tools** (web_search + scrape_page)
+- Correlation ID + Structured Logging
+- Retry + Circuit Breaker
+- Prometheus Metrics
+- Embedded NATS + PocketBase
+- `internal/common` и `internal/service` пакеты
+- `agent-service` (скелет)
 
-### Что ещё нужно сделать (приоритет)
+### Текущий статус по приоритетам
 
-| Приоритет | Задача                              | Сервис(ы)              | Статус    |
-|-----------|-------------------------------------|------------------------|-----------|
-| Высокий   | Полноценный ReAct с реальными tools | execution-service      | В процессе |
-| Высокий   | Полноценный CRUD в agent-service    | agent-service          | Скелет    |
-| Высокий   | Project Manager (оркестратор)       | task-orchestrator      | Базовый   |
-| Средний   | Memory / RAG сервис                 | memory-service         | Нет       |
-| Средний   | Тесты                               | Все                    | Нет       |
-| Низкий    | UI (Svelte / React)                 | frontend               | Нет       |
-| Низкий    | OpenTelemetry tracing               | Все                    | Нет       |
+| Приоритет | Задача                              | Статус          | Комментарий                     |
+|-----------|-------------------------------------|-----------------|---------------------------------|
+| Высокий   | Полноценный ReAct с реальными tools | **Закрыто**     | Реальное выполнение web_search и scrape_page |
+| Высокий   | Полноценный CRUD в agent-service    | В процессе      | Create готов, остальные — заглушки |
+| Высокий   | Project Manager в task-orchestrator | Базовый         | Нужно развивать                 |
+| Средний   | Memory / RAG                        | Нет             | Следующий большой этап          |
+| Средний   | Тесты                               | Нет             | —                               |
 
 ---
 
 ## Статус по сервисам
 
-### 1. `api-gateway`
-- ✅ Полностью на `internal/service` шаблоне
-- ✅ Correlation ID + slog
-- ✅ WebSocket streaming
-- ✅ Интеграция с PocketBase и NATS
-- Статус: **Готов к использованию**
+### `api-gateway` — **Готов**
+- Полностью использует `internal/service`
+- Correlation ID, slog, WebSocket
 
-### 2. `agent-service`
-- ✅ Создан отдельный сервис
-- ✅ Create агент
-- ⚠️ Остальные CRUD методы — заглушки
-- Статус: **Скелет готов**
+### `agent-service` — **Скелет**
+- Создан отдельный сервис
+- Реализован только Create
+- Остальные методы — заглушки
 
-### 3. `execution-service`
-- ✅ ReAct Executor с реальными tools
-- ✅ BaseConsumer + Correlation ID
-- ✅ Structured logging
-- Статус: **Хорошо работает (нужно доработать реальное выполнение tools)**
+### `execution-service` — **Хорошо**
+- Полноценный ReAct Executor с реальными инструментами
+- BaseConsumer + Correlation ID
 
-### 4. `task-orchestrator`
-- ✅ BaseConsumer
-- ⚠️ Логика Project Manager — минимальная
-- Статус: **Нужно развивать**
+### `task-orchestrator` — **Базовый**
+- Есть Consumer
+- Логика делегирования минимальна
 
-### 5. `ollama-client`
-- ✅ Базовый клиент + Tool support
-- Статус: **Готов**
-
-### 6. `nats-server` (embedded)
-- ✅ Работает
-- ✅ Structured logging
-- Статус: **Готов**
-
-### 7. `pocketbase-server` (embedded)
-- ✅ Работает
-- Статус: **Готов**
+### `ollama-client`, `nats-server`, `pocketbase-server` — **Готовы**
 
 ---
 
-## План дальнейшей работы (рекомендуемый порядок)
+## План дальнейшей работы
 
-1. **Стабилизация и запуск** (`make up`)
-2. **Доработка ReAct** — реальное выполнение tool calls + обработка результатов
-3. **Полноценный `agent-service`** — все CRUD методы + интеграция с PocketBase
-4. **Развитие `task-orchestrator`** — настоящий Project Manager (разбиение задач, делегирование)
-5. **Memory / RAG сервис** (опционально)
-6. **Тесты** + CI
-7. **UI** (позже)
-
----
-
-**Текущий приоритет:** Доработка ReAct + полноценный agent-service
+1. Доработать `agent-service` (все CRUD методы)
+2. Развить `task-orchestrator` (настоящий Project Manager)
+3. Добавить Memory/RAG сервис
+4. Написать тесты
+5. UI (позже)
