@@ -6,28 +6,26 @@
 
 ### ✅ Закрытые задачи
 
-- Полноценный **ReAct с реальными tools** (web_search + scrape_page)
-- **agent-service** — все CRUD методы реализованы (Create, Read, Update, Delete, List)
-- Correlation ID + Structured Logging
-- Retry + Circuit Breaker
-- Prometheus Metrics
+- Полноценный **ReAct** с реальными tools
+- Полноценный **agent-service** (все CRUD)
+- Correlation ID, Logging, Retry, Circuit Breaker, Metrics
 - Embedded NATS + PocketBase
 
 ### Текущий статус
 
-| Приоритет | Задача                           | Статус     | Комментарий                     |
-|-----------|----------------------------------|------------|---------------------------------|
-| Высокий   | agent-service (полный CRUD)      | **Закрыто** | Все методы реализованы         |
-| Высокий   | task-orchestrator (Project Manager) | В процессе | Нужно развивать                 |
-| Средний   | Memory / RAG                     | Нет        | —                               |
+| Приоритет | Задача                              | Статус      | Комментарий                     |
+|-----------|-------------------------------------|-------------|---------------------------------|
+| Высокий   | task-orchestrator (Project Manager) | В процессе  | Базовый скелет + комментарии    |
+| Средний   | Memory / RAG                        | Нет         | —                               |
 
 ---
 
 ## Статус по сервисам
 
-### `agent-service` — **Готов**
-- Полноценный CRUD (Create / Read / Update / Delete / List)
-- Интеграция с PocketBase
+### `task-orchestrator` — **В процессе**
+- Есть Consumer
+- Добавлены подробные комментарии, что нужно реализовать
+- Реальная логика делегирования пока отсутствует
 
 ### Остальные сервисы — без изменений
 
@@ -35,4 +33,4 @@
 
 ## Следующий приоритет
 
-**Развитие `task-orchestrator`** — настоящий Project Manager (разбиение задач, делегирование агентам)
+**Развитие `task-orchestrator`** в полноценный Project Manager
