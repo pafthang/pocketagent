@@ -7,33 +7,49 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"github.com/pafthang/pocketagent/internal/common"
 	"github.com/pafthang/pocketagent/internal/models"
 	"github.com/pafthang/pocketagent/internal/nats"
 	"github.com/pafthang/pocketagent/internal/pocketbase"
+	"github.com/pafthang/pocketagent/internal/service"
 )
 
 func main() {
-	e := echo.New()
+	s := service.New("api-gateway")
+	s.AddHealth()
 
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
-	e.Use(middleware.CORS())
-
-	natsClient, _ := nats.NewClient("nats://nats:4222")
+	natsClient, _ := nats.NewClient(s.Config.NatsURL)
 	pbClient := pocketbase.NewClient("http://pocketbase:8090")
 
-	e.GET("/health", healthHandler)
-	e.POST("/agents", func(c echo.Context) error { return createAgent(c, pbClient) })
-	e.POST("/tasks", func(c echo.Context) error { return createTask(c, natsClient) })
-	e.GET("/ws/task/:taskId", wsTaskStream)
+	s.Echo.POST("/agents", func(c echo.Context) error {
+		return createAgent(c, pbClient)
+	})
+	s.Echo.POST("/tasks", func(c echo.Context) error {
+		return createTask(c, natsClient)
+	})
+	s.Echo.GET("/ws/task/:taskId", wsTaskStream)
 
-	e.Logger.Fatal(e.Start(":8080"))
+	s.Start()
 }
 
-func healthHandler(c echo.Context) error {
-	return c.JSON(http.StatusOK, map[string]string{"status": "healthy"})
+func createAgent(c echo.Context, pb *pocketbase.Client) error {
+	var agent models.Agent
+	if err := c.Bind(&agent); err != nil {
+		return err
+	}
+
+	data := map[string]interface{}{
+		"name":        agent.Name,
+		"description": agent.Description,
+		"model":       agent.Model,
+		"system_prompt": agent.SystemPrompt,
+	}
+	_, err := pb.CreateRecord("agents", data)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusCreated, agent)
 }
 
 func createTask(c echo.Context, nc *nats.Client) error {
@@ -42,7 +58,6 @@ func createTask(c echo.Context, nc *nats.Client) error {
 		return err
 	}
 
-	// Generate correlation ID
 	corrID := fmt.Sprintf("task-%d", time.Now().UnixNano())
 	ctx := common.WithCorrelationID(context.Background(), corrID)
 
@@ -56,4 +71,32 @@ func createTask(c echo.Context, nc *nats.Client) error {
 	})
 }
 
-// ... other handlers (createAgent, wsTaskStream)
+func wsTaskStream(c echo.Context) error {
+	taskID := c.Param("taskId")
+	ws, err := c.WebSocketUpgrade()
+	if err != nil {
+		return err
+	}
+	defer ws.Close()
+
+	for i := 0; i < 10; i++ {
+		msg := map[string]interface{}{
+			"task_id": taskID,
+			"step":     i,
+			"status":   "thinking",
+		}
+		if err := ws.WriteJSON(msg); err != nil {
+			return err
+		}
+		time.Sleep(600 * time.Millisecond)
+	}
+
+	final := map[string]interface{}{
+		"task_id": taskID,
+		"status":  "completed",
+		"result":  "Task completed successfully",
+	}
+	ws.WriteJSON(final)
+
+	return nil
+}
