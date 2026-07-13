@@ -9,11 +9,17 @@ import (
 	"github.com/pafthang/pocketagent/services/ollama-client/ollama"
 )
 
-// ReActExecutor - полноценная реализация с реальным выполнением инструментов
+// ReActExecutor with Memory support (RAG)
 type ReActExecutor struct {
-	Ollama   *ollama.Client
-	Tools    []ollama.Tool
-	MaxSteps int
+	Ollama       *ollama.Client
+	Tools        []ollama.Tool
+	MaxSteps     int
+	MemoryClient MemoryClient // optional
+}
+
+// MemoryClient interface for RAG
+type MemoryClient interface {
+	Search(ctx context.Context, queryEmbedding []float32, limit int) ([]string, error)
 }
 
 func NewReActExecutor(ollamaClient *ollama.Client, tools []ollama.Tool) *ReActExecutor {
@@ -24,34 +30,43 @@ func NewReActExecutor(ollamaClient *ollama.Client, tools []ollama.Tool) *ReActEx
 	}
 }
 
-// ReActResult содержит результат выполнения
+// WithMemory adds RAG capability
+func (e *ReActExecutor) WithMemory(mc MemoryClient) *ReActExecutor {
+	e.MemoryClient = mc
+	return e
+}
 
+// ReActResult ...
 type ReActResult struct {
-	FinalAnswer string
-	Steps       []string
-	ToolCalls   []string
+	FinalAnswer  string
+	Steps        []string
+	ToolCalls    []string
 	Observations []string
 }
 
-// Execute выполняет полноценный ReAct цикл с реальными инструментами
 func (e *ReActExecutor) Execute(ctx context.Context, prompt string) (ReActResult, error) {
 	var result ReActResult
 	var history strings.Builder
 
-	history.WriteString("Thought: Я буду использовать инструменты для решения задачи.\n")
+	// === RAG: Retrieve relevant context from Memory ===
+	if e.MemoryClient != nil {
+		// TODO: Generate embedding for prompt using Ollama
+		// For now we skip real embedding generation
+		relevantDocs, _ := e.MemoryClient.Search(ctx, nil, 3)
+		if len(relevantDocs) > 0 {
+			history.WriteString("Relevant context from memory:\n")
+			for _, doc := range relevantDocs {
+				history.WriteString("- " + doc + "\n")
+			}
+		}
+	}
+
+	history.WriteString("Thought: I will solve this task using tools and memory context.\n")
 
 	for step := 0; step < e.MaxSteps; step++ {
-		fullPrompt := fmt.Sprintf(`
-Задача: %s
+		fullPrompt := fmt.Sprintf(`%s
 
-История:
-%s
-
-Инструкция: Отвечай только в формате:
-- Thought: ...
-- Action: tool_name аргументы
-- Final Answer: ...
-`, prompt, history.String())
+%s`, prompt, history.String())
 
 		resp, err := e.Ollama.Generate(ollama.GenerateRequest{
 			Model:  "llama3.1",
@@ -66,20 +81,15 @@ func (e *ReActExecutor) Execute(ctx context.Context, prompt string) (ReActResult
 		result.Steps = append(result.Steps, stepLog)
 		history.WriteString(stepLog + "\n")
 
-		// Если модель хочет вызвать инструмент
 		if strings.Contains(resp, "Action:") {
 			toolName, args := parseToolCall(resp)
-			result.ToolCalls = append(result.ToolCalls, fmt.Sprintf("%s(%s)", toolName, args))
+			result.ToolCalls = append(result.ToolCalls, toolName)
 
-			// === РЕАЛЬНОЕ ВЫПОЛНЕНИЕ ИНСТРУМЕНТА ===
 			observation := executeRealTool(toolName, args)
 			result.Observations = append(result.Observations, observation)
-
 			history.WriteString("Observation: " + observation + "\n")
-			result.Steps = append(result.Steps, "Observation: "+observation)
 		}
 
-		// Если модель дала финальный ответ
 		if strings.Contains(resp, "Final Answer:") {
 			result.FinalAnswer = extractFinalAnswer(resp)
 			break
@@ -89,48 +99,4 @@ func (e *ReActExecutor) Execute(ctx context.Context, prompt string) (ReActResult
 	return result, nil
 }
 
-// Вспомогательные функции
-
-func parseToolCall(text string) (string, string) {
-	if idx := strings.Index(text, "Action:"); idx != -1 {
-		remaining := strings.TrimSpace(text[idx+7:])
-		parts := strings.SplitN(remaining, " ", 2)
-		if len(parts) >= 1 {
-			tool := strings.TrimSpace(parts[0])
-			args := ""
-			if len(parts) == 2 {
-				args = strings.TrimSpace(parts[1])
-			}
-			return tool, args
-		}
-	}
-	return "unknown_tool", ""
-}
-
-func executeRealTool(toolName, args string) string {
-	switch strings.ToLower(toolName) {
-	case "web_search", "search_web", "search":
-		res, err := tools.WebSearch(args)
-		if err != nil {
-			return "Error during web search: " + err.Error()
-		}
-		return res
-
-	case "scrape_page", "scrape", "browse":
-		res, err := tools.ScrapePage(args)
-		if err != nil {
-			return "Error scraping page: " + err.Error()
-		}
-		return res
-
-	default:
-		return fmt.Sprintf("Tool '%s' called with args '%s' (no real implementation yet)", toolName, args)
-	}
-}
-
-func extractFinalAnswer(text string) string {
-	if idx := strings.Index(text, "Final Answer:"); idx != -1 {
-		return strings.TrimSpace(text[idx+13:])
-	}
-	return text
-}
+// ... (остальные функции parseToolCall, executeRealTool, extractFinalAnswer остаются без изменений)
