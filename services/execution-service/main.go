@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/nats-io/nats.go"
@@ -29,21 +28,25 @@ func main() {
 		var task models.Task
 		logger := common.LogWithCorrelation(common.NewSlogLogger("execution"), ctx)
 
-		logger.Info("Task received", "prompt", task.Prompt)
+		logger.Info("Starting ReAct task", "prompt", task.Prompt)
 
 		result, err := executor.Execute(ctx, task.Prompt)
 		if err != nil {
-			logger.Error("ReAct failed", "error", err)
+			logger.Error("ReAct execution failed", "error", err)
 			return
 		}
 
-		logger.Info("ReAct completed", "result", result)
+		logger.Info("ReAct completed", 
+			"final_answer", result.FinalAnswer,
+			"steps", len(result.Steps),
+			"tool_calls", len(result.ToolCalls),
+		)
 	})
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println("Execution service with full improvements ready...")
+	log.Println("Execution service with improved ReAct ready...")
 	select {}
 }
