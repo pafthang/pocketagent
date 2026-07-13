@@ -23,19 +23,27 @@ func main() {
 
 	consumer := service.NewConsumer("execution-service", js)
 	ollamaClient := ollama.NewClient("http://ollama:11434")
+	executor := service.NewReActExecutor(ollamaClient, ollama.GetExampleTools())
 
 	_, err = consumer.Subscribe("agents.tasks.*", func(ctx context.Context, msg *nats.Msg) {
 		var task models.Task
-		fmt.Printf("[ReAct] Task received (corr=%s): %s\n", 
-			common.GetCorrelationID(ctx), task.Prompt)
+		logger := common.LogWithCorrelation(common.NewSlogLogger("execution"), ctx)
 
-		// TODO: full ReAct
+		logger.Info("Task received", "prompt", task.Prompt)
+
+		result, err := executor.Execute(ctx, task.Prompt)
+		if err != nil {
+			logger.Error("ReAct failed", "error", err)
+			return
+		}
+
+		logger.Info("ReAct completed", "result", result)
 	})
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println("Execution service with BaseConsumer ready...")
+	log.Println("Execution service with full improvements ready...")
 	select {}
 }
