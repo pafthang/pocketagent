@@ -9,15 +9,15 @@ import (
 type RetryConfig struct {
 	MaxAttempts int
 	Delay       time.Duration
-	Backoff     time.Duration // multiplier
+	Backoff     float64
 }
 
 // DefaultRetryConfig returns sensible defaults
-defaultRetryConfig() RetryConfig {
+func DefaultRetryConfig() RetryConfig {
 	return RetryConfig{
 		MaxAttempts: 3,
 		Delay:       500 * time.Millisecond,
-		Backoff:     2,
+		Backoff:     2.0,
 	}
 }
 
