@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -54,4 +55,31 @@ func wsTaskStream(c echo.Context) error {
 	return nil
 }
 
-// ... existing createAgent and createTask
+func createAgent(c echo.Context, pb *pocketbase.Client) error {
+	var agent models.Agent
+	if err := c.Bind(&agent); err != nil {
+		return err
+	}
+
+	data := map[string]interface{}{
+		"name":        agent.Name,
+		"description": agent.Description,
+		"model":       agent.Model,
+		"system_prompt": agent.SystemPrompt,
+	}
+	_, err := pb.CreateRecord("agents", data)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusCreated, agent)
+}
+
+func createTask(c echo.Context, nc *nats.Client) error {
+	var task models.Task
+	if err := c.Bind(&task); err != nil {
+		return err
+	}
+	// TODO: publish to NATS
+	return c.JSON(http.StatusCreated, task)
+}
