@@ -1,0 +1,29 @@
+services:
+  nats:
+    image: nats:2.10-alpine
+    command: -js -m 8222
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - nats_data:/data
+
+  pocketbase:
+    image: pocketbase/pocketbase:latest
+    ports:
+      - "8090:8090"
+    volumes:
+      - pocketbase_data:/pb_data
+    command: serve --http=0.0.0.0:8090
+
+  api-gateway:
+    build: ./services/api-gateway
+    depends_on:
+      - nats
+      - pocketbase
+    ports:
+      - "8080:8080"
+
+volumes:
+  nats_data:
+  pocketbase_data:
