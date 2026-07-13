@@ -21,16 +21,23 @@ services:
       - pocketbase
     ports:
       - "8080:8080"
+    environment:
+      - LOG_LEVEL=info
+      - NATS_URL=nats://nats:4222
 
   execution-service:
     build: ./services/execution-service
     depends_on:
       - nats
+    environment:
+      - LOG_LEVEL=info
 
   task-orchestrator:
     build: ./services/task-orchestrator
     depends_on:
       - nats
+    environment:
+      - LOG_LEVEL=info
 
 volumes:
   nats_data:
