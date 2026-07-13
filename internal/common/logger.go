@@ -1,12 +1,22 @@
 package common
 
 import (
-	"log"
+	"context"
+	"log/slog"
 	"os"
 )
 
-// Logger provides structured logging
+// NewSlogLogger creates structured logger with slog
+func NewSlogLogger(service string) *slog.Logger {
+	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})).With("service", service)
+}
 
-func NewLogger(service string) *log.Logger {
-	return log.New(os.Stdout, "["+service+"] ", log.LstdFlags|log.Lshortfile)
+// LogWithCorrelation adds correlation ID to log
+func LogWithCorrelation(logger *slog.Logger, ctx context.Context) *slog.Logger {
+	if corrID := GetCorrelationID(ctx); corrID != "" {
+		return logger.With("correlation_id", corrID)
+	}
+	return logger
 }
