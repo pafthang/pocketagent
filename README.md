@@ -1,14 +1,32 @@
 # pocketagent
 
-**AI Agent Forge** — Платформа управления AI-агентами на Ollama + PocketBase + NATS
+**AI Agent Forge** — Платформа управления AI-агентами на Ollama + **PocketBase** + NATS JetStream
 
-## Обновлённое ТЗ
+## Структура проекта
 
-**Ключевые изменения:**
-- Вместо SQLite/Postgres — **PocketBase** как основной бэкенд (авторизация, хранилище, realtime, SDK для Go).
-- Новый сервис: `pocketbase` (или встроенный запуск).
-- Все сервисы работают с PocketBase через официальный Go SDK или HTTP.
+```
+pocketagent/
+├── go.work
+├── Makefile
+├── docker-compose.yml
+├── README.md
+├── services/
+│   ├── api-gateway/         # HTTP + WS
+│   ├── agent-service/       # CRUD агентов
+│   ├── execution-service/   # Запуск ReAct
+│   ├── task-orchestrator/   # Project Manager
+│   ├── ollama-client/       # Клиент Ollama
+│   └── pocketbase/          # (опционально)
+├── internal/
+│   └── models/              # Общие модели (Agent, Task и т.д.)
+└── pkg/                     # Общие утилиты
+```
 
-Остальная архитектура остаётся микросервисной на Go + NATS JetStream.
+## Что уже сделано:
+- go workspace
+- docker-compose с PocketBase + NATS
+- Базовые модули
 
-Готовы приступать к структуре проекта.
+**Следующий шаг:** Создать общие модели и NATS-клиент.
+
+Напиши «Продолжай» — продолжим генерацию кода.
