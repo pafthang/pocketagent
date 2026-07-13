@@ -7,9 +7,11 @@ require (
 	github.com/nats-io/nats.go v1.38.0
 	github.com/pafthang/pocketagent/internal/models v0.0.0
 	github.com/pafthang/pocketagent/internal/nats v0.0.0
+	github.com/pafthang/pocketagent/internal/pocketbase v0.0.0
 )
 
 replace (
 	github.com/pafthang/pocketagent/internal/models => ../../internal/models
 	github.com/pafthang/pocketagent/internal/nats => ../../internal/nats
+	github.com/pafthang/pocketagent/internal/pocketbase => ../../internal/pocketbase
 )
