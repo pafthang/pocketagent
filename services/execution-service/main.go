@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/nats-io/nats.go"
+	"github.com/pafthang/pocketagent/internal/common"
 	"github.com/pafthang/pocketagent/internal/models"
 	"github.com/pafthang/pocketagent/internal/service"
 	"github.com/pafthang/pocketagent/services/ollama-client/ollama"
@@ -28,7 +29,7 @@ func main() {
 		fmt.Printf("[ReAct] Task received (corr=%s): %s\n", 
 			common.GetCorrelationID(ctx), task.Prompt)
 
-		// TODO: run ReAct
+		// TODO: full ReAct
 	})
 
 	if err != nil {
