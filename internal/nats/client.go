@@ -8,7 +8,7 @@ import (
 	"github.com/pafthang/pocketagent/internal/models"
 )
 
-// Client wraps NATS + JetStream with common utilities
+// Client wraps NATS + JetStream with helpers
 type Client struct {
 	nc *nats.Conn
 	js nats.JetStreamContext
@@ -32,7 +32,7 @@ func NewClient(url string) (*Client, error) {
 func (c *Client) PublishTask(ctx context.Context, task models.Task) error {
 	msg := &nats.Msg{
 		Subject: "agents.tasks." + task.AgentID,
-		Data:    []byte(`{"prompt":"` + task.Prompt + `"}`), // TODO: proper marshal
+		Data:    []byte(`{"prompt":"` + task.Prompt + `"}`),
 		Header:  make(nats.Header),
 	}
 
@@ -42,6 +42,17 @@ func (c *Client) PublishTask(ctx context.Context, task models.Task) error {
 
 	_, err := c.js.PublishMsg(msg)
 	return err
+}
+
+// SubscribeWithCorrelation subscribes with correlation ID extraction
+func (c *Client) SubscribeWithCorrelation(subject string, handler func(ctx context.Context, msg *nats.Msg)) (*nats.Subscription, error) {
+	return c.js.Subscribe(subject, func(msg *nats.Msg) {
+		ctx := context.Background()
+		if corrID := msg.Header.Get("X-Correlation-ID"); corrID != "" {
+			ctx = common.WithCorrelationID(ctx, corrID)
+		}
+		handler(ctx, msg)
+	})
 }
 
 func (c *Client) Close() {
