@@ -22,23 +22,27 @@ func main() {
 	consumer := service.NewConsumer("task-orchestrator", js)
 	logger := common.NewSlogLogger("orchestrator")
 
-	// Подписка на высокоуровневые задачи
 	_, err = consumer.Subscribe("agents.orchestrator.commands", func(ctx context.Context, msg *nats.Msg) {
-		logger.Info("High-level task received", "corr", common.GetCorrelationID(ctx))
+		corrID := common.GetCorrelationID(ctx)
+		logger.Info("High-level task received", "correlation_id", corrID)
 
-		// TODO: Настоящая логика Project Manager
-		// 1. Разбить задачу на подзадачи
-		// 2. Назначить агентам
-		// 3. Следить за выполнением
-		// 4. Собрать результаты
+		// ============================================
+		// TODO: Реальная логика Project Manager
+		// ============================================
+		// 1. Разбить высокоуровневую задачу на подзадачи
+		// 2. Определить, каким агентам делегировать
+		// 3. Опубликовать подзадачи в agents.tasks.*
+		// 4. Подписаться на результаты
+		// 5. Собрать результаты и сформировать финальный ответ
+		// ============================================
 
-		fmt.Println("[Orchestrator] Task delegation logic should be implemented here")
+		fmt.Printf("[Orchestrator] Would now break task into subtasks and delegate (corr=%s)\n", corrID)
 	})
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	logger.Info("Task Orchestrator (Project Manager) started")
+	logger.Info("Task Orchestrator (Project Manager) is running")
 	select {}
 }
