@@ -26,7 +26,6 @@ func main() {
 	e.POST("/agents", func(c echo.Context) error { return createAgent(c, pbClient) })
 	e.POST("/tasks", func(c echo.Context) error { return createTask(c, natsClient) })
 
-	// WebSocket streaming
 	e.GET("/ws/task/:taskId", wsTaskStream)
 
 	e.Logger.Fatal(e.Start(":8080"))
@@ -40,17 +39,34 @@ func wsTaskStream(c echo.Context) error {
 	taskID := c.Param("taskId")
 	ws, err := c.WebSocketUpgrade()
 	if err != nil {
+		c.Logger().Errorf("WebSocket upgrade failed: %v", err)
 		return err
 	}
 	defer ws.Close()
 
+	c.Logger().Infof("WebSocket connected for task: %s", taskID)
+
 	for i := 0; i < 10; i++ {
-		msg := map[string]string{"step": fmt.Sprintf("Step %d for task %s", i, taskID), "status": "thinking"}
+		msg := map[string]interface{}{
+			"task_id": taskID,
+			"step":     i,
+			"status":   "thinking",
+			"message":  fmt.Sprintf("Step %d in progress...", i),
+		}
 		if err := ws.WriteJSON(msg); err != nil {
+			c.Logger().Errorf("WebSocket write error: %v", err)
 			return err
 		}
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(600 * time.Millisecond)
 	}
+
+	// Final message
+	final := map[string]interface{}{
+		"task_id": taskID,
+		"status":  "completed",
+		"result":  "Task completed successfully",
+	}
+	ws.WriteJSON(final)
 
 	return nil
 }
@@ -58,6 +74,7 @@ func wsTaskStream(c echo.Context) error {
 func createAgent(c echo.Context, pb *pocketbase.Client) error {
 	var agent models.Agent
 	if err := c.Bind(&agent); err != nil {
+		c.Logger().Error(err)
 		return err
 	}
 
@@ -69,6 +86,7 @@ func createAgent(c echo.Context, pb *pocketbase.Client) error {
 	}
 	_, err := pb.CreateRecord("agents", data)
 	if err != nil {
+		c.Logger().Errorf("PocketBase error: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
@@ -78,6 +96,7 @@ func createAgent(c echo.Context, pb *pocketbase.Client) error {
 func createTask(c echo.Context, nc *nats.Client) error {
 	var task models.Task
 	if err := c.Bind(&task); err != nil {
+		c.Logger().Error(err)
 		return err
 	}
 	// TODO: publish to NATS
