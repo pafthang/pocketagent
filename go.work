@@ -8,4 +8,5 @@ use (
 	./services/ollama-client
 	./services/nats-server
 	./services/pocketbase-server
+	./services/memory-service
 )
