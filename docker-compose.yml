@@ -40,6 +40,13 @@ services:
     depends_on:
       - nats
 
+  memory-service:
+    build: ./services/memory-service
+    depends_on:
+      - nats
+    ports:
+      - "8082:8082"
+
 volumes:
   nats_data:
   pocketbase_data:
