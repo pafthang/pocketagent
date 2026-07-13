@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/nats-io/nats.go"
-	"github.com/pafthang/pocketagent/internal/models"
+	"github.com/pafthang/pocketagent/internal/common"
+	"github.com/pafthang/pocketagent/internal/service"
 )
 
 func main() {
@@ -15,17 +15,20 @@ func main() {
 	}
 	defer nc.Close()
 
-	log.Println("Project Manager (Task Orchestrator) started")
+	js, _ := nc.JetStream()
 
-	// Subscribe to high-level tasks
-	_, err = nc.Subscribe("agents.orchestrator.commands", func(msg *nats.Msg) {
-		fmt.Println("[Orchestrator] Received high-level task")
-		// TODO: break into subtasks and delegate to execution-service
+	consumer := service.NewConsumer("task-orchestrator", js)
+	logger := common.NewSlogLogger("orchestrator")
+
+	_, err = consumer.Subscribe("agents.orchestrator.commands", func(ctx context.Context, msg *nats.Msg) {
+		logger.Info("High-level task received", "corr", common.GetCorrelationID(ctx))
+		// TODO: break into subtasks and delegate
 	})
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	logger.Info("Task Orchestrator ready")
 	select {}
 }
