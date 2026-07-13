@@ -6,16 +6,13 @@ services:
       - "8222:8222"
     volumes:
       - nats_data:/data
-    environment:
-      - NATS_PORT=4222
 
   pocketbase:
-    image: pocketbase/pocketbase:latest
+    build: ./services/pocketbase-server
     ports:
       - "8090:8090"
     volumes:
       - pocketbase_data:/pb_data
-    command: serve --http=0.0.0.0:8090
 
   api-gateway:
     build: ./services/api-gateway
