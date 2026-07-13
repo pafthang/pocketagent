@@ -2,14 +2,14 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/pafthang/pocketagent/services/execution-service/tools"
 	"github.com/pafthang/pocketagent/services/ollama-client/ollama"
 )
 
-// ReActExecutor provides a more realistic ReAct implementation
+// ReActExecutor with real tool execution
 type ReActExecutor struct {
 	Ollama   *ollama.Client
 	Tools    []ollama.Tool
@@ -24,7 +24,7 @@ func NewReActExecutor(ollamaClient *ollama.Client, tools []ollama.Tool) *ReActEx
 	}
 }
 
-// Execute runs a more realistic ReAct loop
+// Execute runs ReAct with real tool execution
 type ReActResult struct {
 	FinalAnswer string
 	Steps       []string
@@ -35,17 +35,15 @@ func (e *ReActExecutor) Execute(ctx context.Context, prompt string) (ReActResult
 	var result ReActResult
 	var history strings.Builder
 
-	history.WriteString("Thought: I need to solve this task step by step.\n")
+	history.WriteString("Thought: I will solve this using available tools when needed.\n")
 
 	for step := 0; step < e.MaxSteps; step++ {
 		fullPrompt := fmt.Sprintf(`%s
 
+Current history:
 %s
 
-Respond with either:
-- Thought: ...
-- Action: tool_name with args
-- Final Answer: ...`, prompt, history.String())
+Respond with Thought, Action (tool_name args), or Final Answer.`, prompt, history.String())
 
 		resp, err := e.Ollama.Generate(ollama.GenerateRequest{
 			Model:  "llama3.1",
@@ -60,15 +58,15 @@ Respond with either:
 		result.Steps = append(result.Steps, stepLog)
 		history.WriteString(stepLog + "\n")
 
-		// Check for tool call
+		// Check if model wants to call a tool
 		if strings.Contains(resp, "Action:") {
-			toolCall := extractToolCall(resp)
-			result.ToolCalls = append(result.ToolCalls, toolCall)
-			// TODO: actually execute the tool here
-			// For now we simulate observation
-			observation := fmt.Sprintf("Observation: Tool '%s' returned some result.", toolCall)
-			history.WriteString(observation + "\n")
-			result.Steps = append(result.Steps, observation)
+			toolName, args := parseToolCall(resp)
+			result.ToolCalls = append(result.ToolCalls, toolName)
+
+			// Execute real tool
+			observation := executeRealTool(toolName, args)
+			history.WriteString("Observation: " + observation + "\n")
+			result.Steps = append(result.Steps, "Observation: "+observation)
 		}
 
 		if strings.Contains(resp, "Final Answer:") {
@@ -80,16 +78,36 @@ Respond with either:
 	return result, nil
 }
 
-func extractToolCall(text string) string {
-	// Simple extraction
+func parseToolCall(text string) (string, string) {
+	// Very simple parser
 	if idx := strings.Index(text, "Action:"); idx != -1 {
-		end := strings.Index(text[idx:], "\n")
-		if end == -1 {
-			end = len(text)
+		remaining := text[idx+7:]
+		parts := strings.SplitN(remaining, " ", 2)
+		if len(parts) == 2 {
+			return strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
 		}
-		return strings.TrimSpace(text[idx+7 : idx+end])
+		return strings.TrimSpace(parts[0]), ""
 	}
-	return "unknown_tool"
+	return "unknown", ""
+}
+
+func executeRealTool(toolName, args string) string {
+	switch toolName {
+	case "web_search", "search_web":
+		result, err := tools.WebSearch(args)
+		if err != nil {
+			return "Error searching web: " + err.Error()
+		}
+		return result
+	case "scrape_page", "scrape":
+		result, err := tools.ScrapePage(args)
+		if err != nil {
+			return "Error scraping page: " + err.Error()
+		}
+		return result
+	default:
+		return fmt.Sprintf("Tool '%s' executed with args: %s (simulated)", toolName, args)
+	}
 }
 
 func extractFinalAnswer(text string) string {
