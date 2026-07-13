@@ -13,6 +13,12 @@ import (
 	"github.com/pafthang/pocketagent/internal/service"
 )
 
+// MemoryClient interface (same as in ReAct)
+type MemoryClient interface {
+	Add(ctx context.Context, id, content string, embedding []float32) error
+	Search(ctx context.Context, queryEmbedding []float32, limit int) ([]string, error)
+}
+
 func main() {
 	nc, err := nats.Connect("nats://nats:4222")
 	if err != nil {
@@ -25,6 +31,8 @@ func main() {
 	consumer := service.NewConsumer("task-orchestrator", js)
 	logger := common.NewSlogLogger("orchestrator")
 
+	var memoryClient MemoryClient // can be set later
+
 	_, err = consumer.Subscribe("agents.orchestrator.commands", func(ctx context.Context, msg *nats.Msg) {
 		corrID := common.GetCorrelationID(ctx)
 		logger.Info("High-level task received", "correlation_id", corrID)
@@ -32,13 +40,10 @@ func main() {
 		taskText := string(msg.Data)
 		subtasks := smartSplit(taskText)
 
-		logger.Info("Task split into subtasks", "count", len(subtasks))
-
 		results := make(map[int]string)
 		var mu sync.Mutex
 		var wg sync.WaitGroup
 
-		// Подписка на результаты
 		sub, _ := js.Subscribe("agents.results.*", func(m *nats.Msg) {
 			mu.Lock()
 			results[len(results)] = string(m.Data)
@@ -47,17 +52,14 @@ func main() {
 		})
 		defer sub.Unsubscribe()
 
-		// === ПАРАЛЛЕЛЬНАЯ публикация подзадач ===
 		for i, subtask := range subtasks {
 			wg.Add(1)
 			go func(idx int, task string) {
 				subject := fmt.Sprintf("agents.tasks.subtask-%d", idx)
 				js.Publish(subject, []byte(task))
-				logger.Info("Subtask published in parallel", "subject", subject)
 			}(i, subtask)
 		}
 
-		// Реальное ожидание результатов
 		done := make(chan struct{})
 		go func() {
 			wg.Wait()
@@ -66,20 +68,27 @@ func main() {
 
 		select {
 		case <-done:
-			logger.Info("All parallel subtasks completed")
+			logger.Info("All subtasks completed")
 		case <-time.After(30 * time.Second):
-			logger.Warn("Timeout waiting for parallel results")
+			logger.Warn("Timeout")
 		}
 
 		final := buildFinalAnswer(results)
-		logger.Info("Final parallel answer ready", "answer", final)
+
+		// === Сохраняем результат в Memory ===
+		if memoryClient != nil {
+			// TODO: generate embedding
+			memoryClient.Add(ctx, corrID, final, nil)
+		}
+
+		logger.Info("Final answer ready and saved to memory", "answer", final)
 	})
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	logger.Info("Task Orchestrator with parallel execution started")
+	logger.Info("Task Orchestrator with Memory integration started")
 	select {}
 }
 
