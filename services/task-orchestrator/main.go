@@ -30,71 +30,77 @@ func main() {
 		logger.Info("High-level task received", "correlation_id", corrID)
 
 		taskText := string(msg.Data)
-		subtasks := splitIntoSubtasks(taskText)
 
-		logger.Info("Task split", "subtasks", len(subtasks))
+		// Более умное разбиение (простая эвристика по ключевым словам)
+		subtasks := smartSplit(taskText)
+		logger.Info("Task intelligently split", "count", len(subtasks))
 
-		// Карта для сбора результатов
 		results := make(map[int]string)
 		var mu sync.Mutex
+		var wg sync.WaitGroup
 
-		// Подписываемся на результаты подзадач
-		_, err := js.Subscribe("agents.results.*", func(m *nats.Msg) {
+		// Подписка на результаты
+		sub, _ := js.Subscribe("agents.results.*", func(m *nats.Msg) {
 			mu.Lock()
-			defer mu.Unlock()
-
-			// Простая логика: сохраняем результат
 			results[len(results)] = string(m.Data)
-			logger.Info("Subtask result received", "count", len(results))
+			mu.Unlock()
+			wg.Done()
 		})
-		if err != nil {
-			logger.Error("Failed to subscribe to results", "error", err)
-			return
-		}
+		defer sub.Unsubscribe()
 
-		// Публикуем подзадачи
+		// Публикуем подзадачи и ждём результатов
 		for i, subtask := range subtasks {
+			wg.Add(1)
 			subject := fmt.Sprintf("agents.tasks.subtask-%d", i)
-			_, err := js.Publish(subject, []byte(subtask))
-			if err != nil {
-				logger.Error("Failed to publish subtask", "error", err)
-			}
+			js.Publish(subject, []byte(subtask))
 		}
 
-		// Ждём результаты (простая задержка)
-		time.Sleep(5 * time.Second)
+		// Реальное ожидание (с таймаутом)
+		done := make(chan struct{})
+		go func() {
+			wg.Wait()
+			close(done)
+		}()
 
-		// Формируем финальный ответ
-		finalAnswer := buildFinalAnswer(results)
-		logger.Info("Final answer assembled", "answer", finalAnswer)
+		select {
+		case <-done:
+			logger.Info("All subtasks completed")
+		case <-time.After(30 * time.Second):
+			logger.Warn("Timeout waiting for results")
+		}
 
-		// TODO: отправить финальный результат обратно клиенту
+		final := buildFinalAnswer(results)
+		logger.Info("Final answer ready", "answer", final)
 	})
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	logger.Info("Task Orchestrator with result collection started")
+	logger.Info("Advanced Task Orchestrator started")
 	select {}
 }
 
-func splitIntoSubtasks(task string) []string {
-	if strings.Contains(task, "and") {
-		parts := strings.Split(task, "and")
-		for i := range parts {
-			parts[i] = strings.TrimSpace(parts[i])
+func smartSplit(task string) []string {
+	// Улучшенная эвристика
+	keywords := []string{"and", "then", "after that", "also"}
+	for _, kw := range keywords {
+		if strings.Contains(strings.ToLower(task), kw) {
+			parts := strings.Split(task, kw)
+			for i := range parts {
+				parts[i] = strings.TrimSpace(parts[i])
+			}
+			return parts
 		}
-		return parts
 	}
 	return []string{task}
 }
 
 func buildFinalAnswer(results map[int]string) string {
 	var sb strings.Builder
-	sb.WriteString("Final combined answer:\n")
-	for i, res := range results {
-		sb.WriteString(fmt.Sprintf("- Subtask %d: %s\n", i, res))
+	sb.WriteString("Combined result:\n")
+	for i, r := range results {
+		sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, r))
 	}
 	return sb.String()
 }
