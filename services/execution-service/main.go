@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 
 	"github.com/nats-io/nats.go"
 	"github.com/pafthang/pocketagent/internal/models"
+	"github.com/pafthang/pocketagent/internal/service"
 	"github.com/pafthang/pocketagent/services/ollama-client/ollama"
 )
 
@@ -18,22 +20,21 @@ func main() {
 
 	js, _ := nc.JetStream()
 
-	ollama := ollama.NewClient("http://ollama:11434")
-	agent := NewReActAgent(ollama)
+	consumer := service.NewConsumer("execution-service", js)
+	ollamaClient := ollama.NewClient("http://ollama:11434")
 
-	_, err = js.Subscribe("agents.tasks.*", func(msg *nats.Msg) {
+	_, err = consumer.Subscribe("agents.tasks.*", func(ctx context.Context, msg *nats.Msg) {
 		var task models.Task
-		fmt.Printf("[ReAct] Starting task: %s\n", task.Prompt)
+		fmt.Printf("[ReAct] Task received (corr=%s): %s\n", 
+			common.GetCorrelationID(ctx), task.Prompt)
 
-		result := agent.Run(task.Prompt)
-
-		fmt.Println("ReAct Result:\n", result)
+		// TODO: run ReAct
 	})
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println("Execution service with full ReAct loop ready...")
+	log.Println("Execution service with BaseConsumer ready...")
 	select {}
 }
