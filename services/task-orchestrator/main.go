@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/nats-io/nats.go"
 	"github.com/pafthang/pocketagent/internal/common"
@@ -26,23 +27,45 @@ func main() {
 		corrID := common.GetCorrelationID(ctx)
 		logger.Info("High-level task received", "correlation_id", corrID)
 
-		// ============================================
-		// TODO: Реальная логика Project Manager
-		// ============================================
-		// 1. Разбить высокоуровневую задачу на подзадачи
-		// 2. Определить, каким агентам делегировать
-		// 3. Опубликовать подзадачи в agents.tasks.*
-		// 4. Подписаться на результаты
-		// 5. Собрать результаты и сформировать финальный ответ
-		// ============================================
+		// Простая эвристика разбиения задачи
+		taskText := string(msg.Data)
+		subtasks := splitIntoSubtasks(taskText)
 
-		fmt.Printf("[Orchestrator] Would now break task into subtasks and delegate (corr=%s)\n", corrID)
+		logger.Info("Task split into subtasks", "count", len(subtasks))
+
+		for i, subtask := range subtasks {
+			// Публикуем подзадачу
+			subject := fmt.Sprintf("agents.tasks.subtask-%d", i)
+			_, err := js.Publish(subject, []byte(subtask))
+			if err != nil {
+				logger.Error("Failed to publish subtask", "error", err)
+				continue
+			}
+			logger.Info("Subtask published", "subject", subject, "task", subtask)
+		}
+
+		// TODO: В будущем — собирать результаты и формировать финальный ответ
 	})
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	logger.Info("Task Orchestrator (Project Manager) is running")
+	logger.Info("Task Orchestrator (Project Manager) started with basic delegation logic")
 	select {}
+}
+
+// Простая функция разбиения задачи на подзадачи
+func splitIntoSubtasks(task string) []string {
+	// Очень простая эвристика
+	if strings.Contains(task, "and") {
+		parts := strings.Split(task, "and")
+		for i := range parts {
+			parts[i] = strings.TrimSpace(parts[i])
+		}
+		return parts
+	}
+
+	// Если не получилось разбить — возвращаем как одну задачу
+	return []string{task}
 }
