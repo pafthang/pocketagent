@@ -1,0 +1,10 @@
+service: memo
+port: "8082"
+log_level: info
+collection: memory
+data_dir: data/memo
+persist_compress: false
+rag_min_similarity: 0.25
+rag_chunk_size: 1000
+rag_chunk_overlap: 150
+service_token: dev-memo-token

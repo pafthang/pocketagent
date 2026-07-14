@@ -1,4 +1,4 @@
-.PHONY: up down logs build test
+.PHONY: up down logs build test run run-ctrl
 
 up:
 	docker compose up -d --build
@@ -15,9 +15,13 @@ build:
 test:
 	go test ./...
 
-# Development helpers
-run-gateway:
-	go run ./services/api-gateway
+# Local dev — start all services (reads ./configs)
+run run-ctrl:
+	go run ./cmd/ctrl -config-dir=configs
 
-run-execution:
-	go run ./services/execution-service
+# Individual services
+run-gate:
+	go run ./cmd/gate
+
+run-exec:
+	go run ./cmd/exec

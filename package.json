@@ -1,0 +1,24 @@
+{
+  "name": "pocketagent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.11",
+  "workspaces": [
+    "web/client",
+    "web/front"
+  ],
+  "scripts": {
+    "build": "bun run build:client && bun run build:front",
+    "build:client": "bun run --filter @pocketagent/client build",
+    "build:front": "bun run --filter @pocketagent/front build",
+    "dev": "bun run dev:front",
+    "dev:front": "bun run --filter @pocketagent/front dev",
+    "dev:client": "bun run --filter @pocketagent/client build --watch",
+    "check": "bun run check:client && bun run check:front",
+    "check:client": "bun run --filter @pocketagent/client check",
+    "check:front": "bun run --filter @pocketagent/front check",
+    "test:client": "bun run --filter @pocketagent/client test"
+  },
+  "license": "MIT"
+}

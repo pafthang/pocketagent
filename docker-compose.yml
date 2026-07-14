@@ -1,52 +1,214 @@
 services:
   nats:
-    build: ./services/nats-server
+    build:
+      context: .
+      args:
+        SERVICE: nats
     ports:
       - "4222:4222"
       - "8222:8222"
+    environment:
+      - NATS_STORE_DIR=/data/nats
+      - HTTP_PORT=8222
     volumes:
       - nats_data:/data
 
-  pocketbase:
-    build: ./services/pocketbase-server
+  pocket:
+    build:
+      context: .
+      args:
+        SERVICE: pocket
+    # In production, remove ports mapping — PocketBase is only for internal services.
     ports:
       - "8090:8090"
+    environment:
+      - APP_ENV=${APP_ENV:-development}
+      - POCKETBASE_DATA_DIR=/data
+      - PORT=8090
+      - POCKETBASE_SUPERUSER_EMAIL=${POCKETBASE_SUPERUSER_EMAIL:-}
+      - POCKETBASE_SUPERUSER_PASSWORD=${POCKETBASE_SUPERUSER_PASSWORD:-}
     volumes:
-      - pocketbase_data:/pb_data
+      - pocketbase_data:/data
 
-  api-gateway:
-    build: ./services/api-gateway
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  memo:
+    build:
+      context: .
+      args:
+        SERVICE: memo
+    # Internal only — not exposed to the host; gate/exec/task reach memo on the compose network.
+    environment:
+      - PORT=8082
+      - MEMO_DATA_DIR=/data/memo
+      - MEMO_RAG_MIN_SIMILARITY=0.25
+      - MEMO_RAG_CHUNK_SIZE=1000
+      - MEMO_RAG_CHUNK_OVERLAP=150
+      - MEMO_SERVICE_TOKEN=${MEMO_SERVICE_TOKEN:-dev-memo-token}
+    volumes:
+      - memo_data:/data/memo
+
+  exec:
+    build:
+      context: .
+      args:
+        SERVICE: exec
+    ports:
+      - "9084:9084"
+    environment:
+      - NATS_URL=nats://nats:4222
+      - OLLAMA_URL=http://ollama:11434
+      - MEMO_URL=http://memo:8082
+      - MEMO_SERVICE_TOKEN=${MEMO_SERVICE_TOKEN:-dev-memo-token}
+      - POCKETBASE_URL=http://pocket:8090
+      - POCKETBASE_ADMIN_EMAIL=${POCKETBASE_ADMIN_EMAIL:-${POCKETBASE_SUPERUSER_EMAIL:-}}
+      - POCKETBASE_ADMIN_PASSWORD=${POCKETBASE_ADMIN_PASSWORD:-${POCKETBASE_SUPERUSER_PASSWORD:-}}
+      - EMBED_MODEL=nomic-embed-text
+      - LLM_MODEL=llama3.1
+      - HEALTH_PORT=9084
+      - STREAM_LLM_TOKENS=true
+    depends_on:
+      nats:
+        condition: service_started
+      ollama:
+        condition: service_healthy
+      memo:
+        condition: service_started
+      pocket:
+        condition: service_started
+
+  task:
+    build:
+      context: .
+      args:
+        SERVICE: task
+    ports:
+      - "9085:9085"
+    environment:
+      - NATS_URL=nats://nats:4222
+      - OLLAMA_URL=http://ollama:11434
+      - MEMO_URL=http://memo:8082
+      - MEMO_SERVICE_TOKEN=${MEMO_SERVICE_TOKEN:-dev-memo-token}
+      - POCKETBASE_URL=http://pocket:8090
+      - POCKETBASE_ADMIN_EMAIL=${POCKETBASE_ADMIN_EMAIL:-${POCKETBASE_SUPERUSER_EMAIL:-}}
+      - POCKETBASE_ADMIN_PASSWORD=${POCKETBASE_ADMIN_PASSWORD:-${POCKETBASE_SUPERUSER_PASSWORD:-}}
+      - EMBED_MODEL=nomic-embed-text
+      - LLM_MODEL=llama3.1
+      - TASK_MAX_SUBTASKS=4
+      - HEALTH_PORT=9085
+      - TASK_TIMEOUT_SEC=120
     depends_on:
       - nats
-      - pocketbase
+      - ollama
+      - memo
+      - pocket
+      - exec
+
+  agent:
+    build:
+      context: .
+      args:
+        SERVICE: agent
+    ports:
+      - "8081:8081"
+    environment:
+      - PORT=8081
+      - POCKETBASE_URL=http://pocket:8090
+      - POCKETBASE_ADMIN_EMAIL=${POCKETBASE_ADMIN_EMAIL:-${POCKETBASE_SUPERUSER_EMAIL:-}}
+      - POCKETBASE_ADMIN_PASSWORD=${POCKETBASE_ADMIN_PASSWORD:-${POCKETBASE_SUPERUSER_PASSWORD:-}}
+      - SPACE_URL=http://space:8083
+    depends_on:
+      - nats
+      - pocket
+      - space
+
+  files:
+    build:
+      context: .
+      args:
+        SERVICE: files
+    ports:
+      - "8086:8086"
+    environment:
+      - PORT=8086
+      - POCKETBASE_URL=http://pocket:8090
+      - POCKETBASE_ADMIN_EMAIL=${POCKETBASE_ADMIN_EMAIL:-${POCKETBASE_SUPERUSER_EMAIL:-}}
+      - POCKETBASE_ADMIN_PASSWORD=${POCKETBASE_ADMIN_PASSWORD:-${POCKETBASE_SUPERUSER_PASSWORD:-}}
+      - MEMO_URL=http://memo:8082
+      - MEMO_SERVICE_TOKEN=${MEMO_SERVICE_TOKEN:-dev-memo-token}
+      - OLLAMA_URL=http://ollama:11434
+      - EMBED_MODEL=nomic-embed-text
+      - FILES_DATA_DIR=/data/files
+    volumes:
+      - files_data:/data/files
+    depends_on:
+      - pocket
+      - memo
+      - ollama
+
+  space:
+    build:
+      context: .
+      args:
+        SERVICE: space
+    ports:
+      - "8083:8083"
+    environment:
+      - APP_ENV=${APP_ENV:-development}
+      - PORT=8083
+      - POCKETBASE_URL=http://pocket:8090
+      - POCKETBASE_ADMIN_EMAIL=${POCKETBASE_ADMIN_EMAIL:-${POCKETBASE_SUPERUSER_EMAIL:-}}
+      - POCKETBASE_ADMIN_PASSWORD=${POCKETBASE_ADMIN_PASSWORD:-${POCKETBASE_SUPERUSER_PASSWORD:-}}
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-http://127.0.0.1:8080}
+      - REQUIRE_EMAIL_VERIFICATION=${REQUIRE_EMAIL_VERIFICATION:-false}
+    depends_on:
+      - pocket
+
+  gate:
+    build:
+      context: .
+      args:
+        SERVICE: gate
     ports:
       - "8080:8080"
-
-  agent-service:
-    build: ./services/agent-service
+    environment:
+      - APP_ENV=${APP_ENV:-development}
+      - PORT=8080
+      - NATS_URL=nats://nats:4222
+      - POCKETBASE_URL=http://pocket:8090
+      - POCKETBASE_ADMIN_EMAIL=${POCKETBASE_ADMIN_EMAIL:-${POCKETBASE_SUPERUSER_EMAIL:-}}
+      - POCKETBASE_ADMIN_PASSWORD=${POCKETBASE_ADMIN_PASSWORD:-${POCKETBASE_SUPERUSER_PASSWORD:-}}
+      - SPACE_URL=http://space:8083
+      - AGENT_URL=http://agent:8081
+      - FILES_URL=http://files:8086
+      - MEMO_URL=http://memo:8082
+      - MEMO_SERVICE_TOKEN=${MEMO_SERVICE_TOKEN:-dev-memo-token}
+      - OLLAMA_URL=http://ollama:11434
+      - EMBED_MODEL=nomic-embed-text
     depends_on:
       - nats
-      - pocketbase
-    ports:
-      - "8081:8080"
-
-  execution-service:
-    build: ./services/execution-service
-    depends_on:
-      - nats
-
-  task-orchestrator:
-    build: ./services/task-orchestrator
-    depends_on:
-      - nats
-
-  memory-service:
-    build: ./services/memory-service
-    depends_on:
-      - nats
-    ports:
-      - "8082:8082"
+      - pocket
+      - space
+      - agent
+      - files
+      - task
+      - memo
+      - ollama
 
 volumes:
   nats_data:
   pocketbase_data:
+  ollama_data:
+  memo_data:
+  files_data:

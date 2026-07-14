@@ -1,0 +1,49 @@
+[
+  {
+    "id": "playwright",
+    "name": "Playwright",
+    "description": "Browser automation via Playwright MCP server",
+    "icon": "globe",
+    "category": "automation",
+    "package": "@playwright/mcp@latest",
+    "transport": "stdio",
+    "docs_url": "https://github.com/microsoft/playwright-mcp",
+    "needs_args": true,
+    "oauth": false,
+    "env_keys": []
+  },
+  {
+    "id": "filesystem",
+    "name": "Filesystem",
+    "description": "Read and write files in a configured directory",
+    "icon": "folder",
+    "category": "files",
+    "package": "@modelcontextprotocol/server-filesystem",
+    "transport": "stdio",
+    "docs_url": "https://github.com/modelcontextprotocol/servers",
+    "needs_args": true,
+    "oauth": false,
+    "env_keys": []
+  },
+  {
+    "id": "brave-search",
+    "name": "Brave Search",
+    "description": "Web search through Brave Search API",
+    "icon": "search",
+    "category": "search",
+    "package": "@modelcontextprotocol/server-brave-search",
+    "transport": "stdio",
+    "docs_url": "https://github.com/modelcontextprotocol/servers",
+    "needs_args": false,
+    "oauth": false,
+    "env_keys": [
+      {
+        "key": "BRAVE_API_KEY",
+        "label": "Brave API Key",
+        "required": true,
+        "placeholder": "BSA...",
+        "secret": true
+      }
+    ]
+  }
+]

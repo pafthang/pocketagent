@@ -1,0 +1,13 @@
+service: files
+port: "8086"
+log_level: info
+pocketbase_url: http://127.0.0.1:8090
+pocketbase_admin_email: admin@example.com
+pocketbase_admin_password: changeme123
+memo_url: http://127.0.0.1:8082
+memo_service_token: dev-memo-token
+ollama_url: http://127.0.0.1:11434
+embed_model: nomic-embed-text
+files_backend: local
+files_data_dir: data/files
+authorize_cache_seconds: 30

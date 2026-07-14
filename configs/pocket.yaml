@@ -1,0 +1,6 @@
+service: pocket
+data_dir: data
+port: 8090
+log_level: info
+superuser_email: admin@example.com
+superuser_password: changeme123

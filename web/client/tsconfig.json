@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "rootDir": ".",
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0"
+  },
+  "include": [
+    "src/lib/**/*.ts",
+    "src/lib/**/*.svelte.ts",
+    "tests/**/*.ts"
+  ],
+  "exclude": [
+    "dist",
+    ".svelte-kit",
+    "node_modules"
+  ]
+}

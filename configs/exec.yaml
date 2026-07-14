@@ -1,0 +1,21 @@
+service: exec
+log_level: info
+nats_url: nats://127.0.0.1:4222
+ollama_url: http://127.0.0.1:11434
+memo_url: http://127.0.0.1:8082
+memo_service_token: dev-memo-token
+pocketbase_url: http://127.0.0.1:8090
+pocketbase_admin_email: admin@example.com
+pocketbase_admin_password: changeme123
+embed_model: nomic-embed-text
+llm_model: llama3.1
+health_port: "9084"
+stream_llm_tokens: true
+search_provider: auto
+# serper_api_key: ""
+# tavily_api_key: ""
+code_exec_enabled: false
+code_exec_timeout_sec: 10
+# mcp_servers: '[{"name":"fs","command":"npx","args":["-y","@modelcontextprotocol/server-filesystem","/tmp"]}]'
+# egress_allowlist: api.duckduckgo.com,google.serper.dev,api.tavily.com,ollama,pocket,memo
+# prompt_guard_mode: block

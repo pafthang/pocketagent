@@ -1,0 +1,11 @@
+service: nats
+port: 4222
+http_port: 8222
+store_dir: data/nats
+log_level: info
+
+# JetStream stream (created by exec/task/gate on first connect)
+jetstream:
+  stream: AGENTS
+  subjects:
+    - agents.>

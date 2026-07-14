@@ -1,0 +1,63 @@
+start_timeout_sec: 30
+stop_timeout_sec: 10
+
+# Ollama is not started by ctrl — run separately (default http://127.0.0.1:11434).
+# Gate/exec/task use ollama_url from their service configs for embeddings and LLM.
+
+services:
+  nats:
+    package: ./cmd/nats
+    wait_port: 4222
+
+  pocket:
+    package: ./cmd/pocket
+    wait_port: 8090
+
+  agent:
+    package: ./cmd/agent
+    wait_port: 8081
+    depends_on:
+      - pocket
+      - space
+
+  files:
+    package: ./cmd/files
+    wait_port: 8086
+    depends_on:
+      - pocket
+      - memo
+
+  space:
+    package: ./cmd/space
+    wait_port: 8083
+    depends_on:
+      - pocket
+
+  memo:
+    package: ./cmd/memo
+    wait_port: 8082
+
+  exec:
+    package: ./cmd/exec
+    depends_on:
+      - nats
+      - memo
+
+  task:
+    package: ./cmd/task
+    depends_on:
+      - nats
+      - memo
+      - exec
+
+  gate:
+    package: ./cmd/gate
+    wait_port: 8080
+    depends_on:
+      - nats
+      - pocket
+      - space
+      - agent
+      - files
+      - memo
+      - task

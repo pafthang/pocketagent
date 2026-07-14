@@ -1,0 +1,8 @@
+service: agent
+port: "8081"
+log_level: info
+pocketbase_url: http://127.0.0.1:8090
+pocketbase_admin_email: admin@example.com
+pocketbase_admin_password: changeme123
+space_url: http://127.0.0.1:8083
+authorize_cache_seconds: 30

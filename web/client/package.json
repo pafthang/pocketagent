@@ -1,0 +1,61 @@
+{
+  "name": "@pocketagent/client",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.11",
+  "files": ["dist"],
+  "svelte": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "svelte": "./dist/index.js",
+      "development": "./src/lib/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./svelte": {
+      "types": "./dist/svelte/index.d.ts",
+      "svelte": "./dist/svelte/index.js",
+      "development": "./src/lib/svelte/index.ts",
+      "default": "./dist/svelte/index.js"
+    },
+    "./svelte/state": {
+      "types": "./dist/svelte/state.svelte.d.ts",
+      "svelte": "./dist/svelte/state.svelte.js",
+      "development": "./src/lib/svelte/state.svelte.ts",
+      "default": "./dist/svelte/state.svelte.js"
+    },
+    "./svelte/task-stream": {
+      "types": "./dist/svelte/task-stream.svelte.d.ts",
+      "svelte": "./dist/svelte/task-stream.svelte.js",
+      "development": "./src/lib/svelte/task-stream.svelte.ts",
+      "default": "./dist/svelte/task-stream.svelte.js"
+    },
+    "./svelte/resource": {
+      "types": "./dist/svelte/resource.svelte.d.ts",
+      "svelte": "./dist/svelte/resource.svelte.js",
+      "development": "./src/lib/svelte/resource.svelte.ts",
+      "default": "./dist/svelte/resource.svelte.js"
+    }
+  },
+  "scripts": {
+    "build": "svelte-package",
+    "check": "tsc --noEmit && svelte-check --tsconfig ./tsconfig.json",
+    "prepack": "bun run build",
+    "test": "bun test",
+    "test:watch": "bun test --watch"
+  },
+  "peerDependencies": {
+    "svelte": "^5.0.0"
+  },
+  "devDependencies": {
+    "@sveltejs/package": "^2.5.7",
+    "@sveltejs/vite-plugin-svelte": "^6.2.4",
+    "svelte": "^5.49.0",
+    "svelte-check": "^4.4.2",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.6"
+  }
+}

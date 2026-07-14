@@ -1,0 +1,56 @@
+[
+  {
+    "id": "summarize",
+    "name": "Summarize",
+    "description": "Condense long text into a clear summary",
+    "category": "quick",
+    "argument_hint": "Paste the text to summarize",
+    "prompt": "Summarize the following content clearly and concisely. Preserve key facts and decisions.\n\n{{input}}",
+    "tools": ["search_web"]
+  },
+  {
+    "id": "translate",
+    "name": "Translate",
+    "description": "Translate text to another language",
+    "category": "quick",
+    "argument_hint": "Text and target language",
+    "prompt": "Translate the following text. If a target language is not specified, ask briefly, otherwise translate directly.\n\n{{input}}",
+    "tools": []
+  },
+  {
+    "id": "analyze-csv",
+    "name": "Analyze CSV",
+    "description": "Explore tabular data and surface insights",
+    "category": "analyze",
+    "argument_hint": "Describe the dataset or paste sample rows",
+    "prompt": "Analyze the following dataset description or sample data. Identify trends, anomalies, and suggested charts.\n\n{{input}}",
+    "tools": ["search_web", "code_exec"]
+  },
+  {
+    "id": "write-blog",
+    "name": "Write Blog Post",
+    "description": "Draft a blog post from a topic or outline",
+    "category": "write",
+    "argument_hint": "Topic or outline",
+    "prompt": "Write a well-structured blog post based on the topic or outline below. Use headings and a strong intro.\n\n{{input}}",
+    "tools": ["search_web"]
+  },
+  {
+    "id": "debug-code",
+    "name": "Debug Code",
+    "description": "Find bugs and suggest fixes in code snippets",
+    "category": "dev",
+    "argument_hint": "Paste code and describe the issue",
+    "prompt": "Review the code and issue below. Explain root cause and propose a minimal fix.\n\n{{input}}",
+    "tools": ["code_exec"]
+  },
+  {
+    "id": "organize-files",
+    "name": "Organize Files",
+    "description": "Plan a file organization strategy",
+    "category": "files",
+    "argument_hint": "Describe your folders or naming mess",
+    "prompt": "Propose a practical file organization plan for the situation below, including folder structure and naming rules.\n\n{{input}}",
+    "tools": []
+  }
+]

@@ -1,0 +1,8 @@
+data/
+node_modules/
+bun.lock
+web/client/package-lock.json
+web/client/dist/
+web/client/.svelte-kit/
+web/front/.svelte-kit/
+web/front/build/
