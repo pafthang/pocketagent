@@ -74,6 +74,17 @@ export interface UploadFileInput {
   filename: string;
   path?: string;
   projectId?: string;
+  overwrite?: boolean;
+}
+
+export interface PatchFileInput {
+  name?: string;
+  tags?: string[];
+}
+
+export interface FilePathTarget {
+  /** Destination directory virtual path. */
+  path: string;
 }
 
 export interface CreateFolderInput {
@@ -212,11 +223,16 @@ export class FilesAPI {
     form.append('file', input.file, input.filename);
     if (input.path) form.append('path', input.path);
     if (input.projectId) form.append('project_id', input.projectId);
+    if (input.overwrite) form.append('overwrite', 'true');
 
     const headers = buildHeaders(this.core.ctx);
     headers.delete('Content-Type');
 
-    const res = await this.core.ctx.fetchFn(`${this.core.baseUrl}/files/upload`, {
+    const uploadUrl = input.overwrite
+      ? `${this.core.baseUrl}/files/upload?overwrite=true`
+      : `${this.core.baseUrl}/files/upload`;
+
+    const res = await this.core.ctx.fetchFn(uploadUrl, {
       method: 'POST',
       headers,
       body: form,
@@ -268,5 +284,55 @@ export class FilesAPI {
 
   delete(id: string, config?: RequestConfig): Promise<void> {
     return this.core.request('DELETE', `/files/${encodeURIComponent(id)}`, undefined, { config });
+  }
+
+  patch(id: string, input: PatchFileInput, config?: RequestConfig): Promise<StoredFile> {
+    return this.core.request('PATCH', `/files/${encodeURIComponent(id)}`, input, { config });
+  }
+
+  async putContent(
+    id: string,
+    content: string | Blob,
+    config?: RequestConfig,
+  ): Promise<StoredFile> {
+    const headers = buildHeaders(this.core.ctx);
+    const body = typeof content === 'string' ? content : content;
+    if (typeof content === 'string') {
+      headers.set('Content-Type', 'text/plain; charset=utf-8');
+    } else if (!headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/octet-stream');
+    }
+
+    const res = await this.core.ctx.fetchFn(
+      `${this.core.baseUrl}/files/${encodeURIComponent(id)}/content`,
+      {
+        method: 'PUT',
+        headers,
+        body,
+        signal: config?.signal,
+      },
+    );
+    if (!res.ok) {
+      throw await errorFromResponse(res);
+    }
+    return (await res.json()) as StoredFile;
+  }
+
+  move(id: string, input: FilePathTarget, config?: RequestConfig): Promise<StoredFile> {
+    return this.core.request(
+      'POST',
+      `/files/${encodeURIComponent(id)}/move`,
+      input,
+      { config },
+    );
+  }
+
+  copy(id: string, input: FilePathTarget, config?: RequestConfig): Promise<StoredFile> {
+    return this.core.request(
+      'POST',
+      `/files/${encodeURIComponent(id)}/copy`,
+      input,
+      { config },
+    );
   }
 }

@@ -12,6 +12,21 @@ func TestMemoDocumentIDForFile(t *testing.T) {
 	}
 }
 
+func TestRebaseVirtualPath(t *testing.T) {
+	cases := []struct {
+		oldRoot, newRoot, path, want string
+	}{
+		{"/docs", "/archive", "/docs", "/archive"},
+		{"/docs", "/archive", "/docs/readme.md", "/archive/readme.md"},
+		{"/projects/p1/docs", "/projects/p1/archive", "/projects/p1/docs/a/b.txt", "/projects/p1/archive/a/b.txt"},
+	}
+	for _, tc := range cases {
+		if got := rebaseVirtualPath(tc.oldRoot, tc.newRoot, tc.path); got != tc.want {
+			t.Fatalf("rebaseVirtualPath(%q,%q,%q) = %q, want %q", tc.oldRoot, tc.newRoot, tc.path, got, tc.want)
+		}
+	}
+}
+
 func TestResolveScopeMatchesPathPackage(t *testing.T) {
 	cases := []struct {
 		route, path, query, wantProject, wantDir string

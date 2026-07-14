@@ -44,12 +44,49 @@ func uploadFileHandler(deps *Deps) echo.HandlerFunc {
 		}
 
 		virtualPath := filepath.JoinPath(scope.DirPath, name)
-		if _, err := deps.PB.FindFileByPath(spaceID, virtualPath); err == nil {
-			return c.JSON(http.StatusConflict, map[string]string{"error": "file already exists"})
+		overwrite := strings.EqualFold(strings.TrimSpace(c.FormValue("overwrite")), "true") ||
+			strings.EqualFold(strings.TrimSpace(c.QueryParam("overwrite")), "true")
+
+		in, err := src.Open()
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		}
+		defer in.Close()
+
+		mimeType := filepath.DetectMimeType(name, nil)
+		if header := src.Header.Get("Content-Type"); header != "" && header != "application/octet-stream" {
+			mimeType = header
+		}
+
+		if existing, findErr := deps.PB.FindFileByPath(spaceID, virtualPath); findErr == nil {
+			if !overwrite {
+				return c.JSON(http.StatusConflict, map[string]string{"error": "file already exists"})
+			}
+			if existing.IsDir {
+				return c.JSON(http.StatusBadRequest, map[string]string{"error": "path is a directory"})
+			}
+			oldKey := existing.StorageKey
+			storageKey, checksum, size, saveErr := deps.Store.Save(spaceID, existing.ID, in)
+			if saveErr != nil {
+				return c.JSON(http.StatusInternalServerError, map[string]string{"error": saveErr.Error()})
+			}
+			existing.StorageKey = storageKey
+			existing.Checksum = checksum
+			existing.Size = size
+			existing.MimeType = mimeType
+			updated, updErr := deps.PB.UpdateFile(existing.ID, existing)
+			if updErr != nil {
+				_ = deps.Store.Delete(storageKey)
+				return httpx.MapPocketError(c, updErr)
+			}
+			if oldKey != "" && oldKey != storageKey {
+				_ = deps.Store.Delete(oldKey)
+			}
+			return c.JSON(http.StatusOK, updated)
 		} else {
 			var apiErr *pbclient.APIError
-			if !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusNotFound {
-				return httpx.MapPocketError(c, err)
+			if !errors.As(findErr, &apiErr) || apiErr.StatusCode != http.StatusNotFound {
+				return httpx.MapPocketError(c, findErr)
 			}
 		}
 
@@ -59,20 +96,9 @@ func uploadFileHandler(deps *Deps) echo.HandlerFunc {
 		}
 
 		recordID := fmt.Sprintf("file-%d", time.Now().UnixNano())
-		in, err := src.Open()
-		if err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
-		}
-		defer in.Close()
-
 		storageKey, checksum, size, err := deps.Store.Save(spaceID, recordID, in)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
-		}
-
-		mimeType := filepath.DetectMimeType(name, nil)
-		if header := src.Header.Get("Content-Type"); header != "" && header != "application/octet-stream" {
-			mimeType = header
 		}
 
 		file := models.StoredFile{

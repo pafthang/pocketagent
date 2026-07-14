@@ -66,6 +66,8 @@ func RegisterRoutes(e *echo.Echo, deps Deps) {
 	fileWrite := deps.RBAC.RequireAction(space.ActionFileWrite)
 	tenant.GET("/files/*", proxy.Files(deps.Files, http.MethodGet, "/files", true), fileRead)
 	tenant.POST("/files/*", proxy.Files(deps.Files, http.MethodPost, "/files", true), fileWrite)
+	tenant.PATCH("/files/*", proxy.Files(deps.Files, http.MethodPatch, "/files", true), fileWrite)
+	tenant.PUT("/files/*", proxy.Files(deps.Files, http.MethodPut, "/files", true), fileWrite)
 	tenant.DELETE("/files/*", proxy.Files(deps.Files, http.MethodDelete, "/files", true), fileWrite)
 	tenant.GET("/projects/:id/files/*", proxy.ProjectFiles(deps.Files, http.MethodGet, true), fileRead)
 	tenant.POST("/projects/:id/files/*", proxy.ProjectFiles(deps.Files, http.MethodPost, true), fileWrite)

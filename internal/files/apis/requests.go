@@ -29,3 +29,17 @@ type fileContentResponse struct {
 	Path    string `json:"path"`
 	Content string `json:"content"`
 }
+
+type patchFileRequest struct {
+	Name string   `json:"name"`
+	Tags []string `json:"tags"`
+}
+
+type pathTargetRequest struct {
+	// Destination directory virtual path (e.g. "/" or "/projects/p1/docs").
+	Path string `json:"path"`
+}
+
+type putFileContentJSON struct {
+	Content string `json:"content"`
+}

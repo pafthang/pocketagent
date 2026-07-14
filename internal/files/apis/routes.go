@@ -13,6 +13,10 @@ func RegisterRoutes(tenant *echo.Group, deps *Deps, readAction, writeAction echo
 	tenant.GET("/files/:id/content", fileContentHandler(deps), readAction)
 	tenant.POST("/files/upload", uploadFileHandler(deps), writeAction)
 	tenant.POST("/files/folders", createFolderHandler(deps), writeAction)
+	tenant.PATCH("/files/:id", patchFileHandler(deps), writeAction)
+	tenant.PUT("/files/:id/content", putFileContentHandler(deps), writeAction)
+	tenant.POST("/files/:id/move", moveFileHandler(deps), writeAction)
+	tenant.POST("/files/:id/copy", copyFileHandler(deps), writeAction)
 	tenant.POST("/files/:id/ingest", ingestFileHandler(deps), writeAction)
 	tenant.DELETE("/files/:id", deleteFileHandler(deps), writeAction)
 }

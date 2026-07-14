@@ -44,8 +44,8 @@ function ctxKey(ctx?: FileOpContext): string | undefined {
 
 export class RemoteFileSystem implements FileSystemProvider {
   scheme = "remote" as const;
-  supportsPaste = false;
-  supportsRename = false;
+  supportsPaste = true;
+  supportsRename = true;
 
   private entryByPath = new Map<string, FileEntry>();
   private blobUrlCache = new Map<string, string>();
@@ -116,26 +116,44 @@ export class RemoteFileSystem implements FileSystemProvider {
   }
 
   async writeFile(path: string, content: string, ctx?: FileOpContext): Promise<void> {
+    const id = ctx?.id ?? this.entryByPath.get(path)?.id;
+    if (id) {
+      const updated = await this.client().files.putContent(id, content);
+      this.entryByPath.set(path, browseToEntry({
+        id: updated.id,
+        name: updated.name,
+        path: updated.virtual_path,
+        is_dir: updated.is_dir,
+        size: updated.size,
+        mime_type: updated.mime_type,
+        project_id: updated.project_id,
+        modified_at: updated.updated_at,
+      }));
+      return;
+    }
+
     const name = getFileName(path);
     const parent = parentVirtualPath(path);
     const { projectId } = this.scopeFor(parent);
     const mime = ctx?.mimeType ?? "text/plain";
-
-    if (ctx?.id) {
-      try {
-        await this.client().files.delete(ctx.id);
-      } catch {
-        // replace flow — continue upload
-      }
-    }
-
     const blob = new Blob([content], { type: mime });
-    await this.client().files.upload({
+    const stored = await this.client().files.upload({
       file: blob,
       filename: name,
       path: isVirtualRoot(parent) ? "/" : parent,
       projectId,
+      overwrite: true,
     });
+    this.entryByPath.set(stored.virtual_path, browseToEntry({
+      id: stored.id,
+      name: stored.name,
+      path: stored.virtual_path,
+      is_dir: stored.is_dir,
+      size: stored.size,
+      mime_type: stored.mime_type,
+      project_id: stored.project_id,
+      modified_at: stored.updated_at,
+    }));
   }
 
   async deleteFile(path: string, _recursive = false, ctx?: FileOpContext): Promise<void> {
@@ -150,8 +168,21 @@ export class RemoteFileSystem implements FileSystemProvider {
     }
   }
 
-  async rename(): Promise<void> {
-    throw new Error("Rename is not supported for remote files");
+  async rename(oldPath: string, newPath: string, ctx?: FileOpContext): Promise<void> {
+    const id = this.resolveId(oldPath, ctx);
+    const newName = getFileName(newPath);
+    const updated = await this.client().files.patch(id, { name: newName });
+    this.entryByPath.delete(oldPath);
+    this.entryByPath.set(updated.virtual_path, browseToEntry({
+      id: updated.id,
+      name: updated.name,
+      path: updated.virtual_path,
+      is_dir: updated.is_dir,
+      size: updated.size,
+      mime_type: updated.mime_type,
+      project_id: updated.project_id,
+      modified_at: updated.updated_at,
+    }));
   }
 
   async stat(path: string, ctx?: FileOpContext): Promise<FileEntry> {
@@ -194,16 +225,34 @@ export class RemoteFileSystem implements FileSystemProvider {
     return { home: "/", documents: "/", downloads: "/", desktop: "/" };
   }
 
-  async copyFile(): Promise<void> {
-    throw new Error("Copy is not supported for remote files");
+  async copyFile(src: string, dest: string, ctx?: FileOpContext): Promise<void> {
+    const id = this.resolveId(src, ctx);
+    const destDir = parentVirtualPath(dest);
+    await this.client().files.copy(id, { path: isVirtualRoot(destDir) ? "/" : destDir });
+    await this.readDir(destDir);
   }
 
   async copyDir(): Promise<void> {
-    throw new Error("Copy is not supported for remote files");
+    throw new Error("Directory copy is not supported yet");
   }
 
-  async moveFile(): Promise<void> {
-    throw new Error("Move is not supported for remote files");
+  async moveFile(src: string, dest: string, ctx?: FileOpContext): Promise<void> {
+    const id = this.resolveId(src, ctx);
+    const destDir = parentVirtualPath(dest);
+    const updated = await this.client().files.move(id, {
+      path: isVirtualRoot(destDir) ? "/" : destDir,
+    });
+    this.entryByPath.delete(src);
+    this.entryByPath.set(updated.virtual_path, browseToEntry({
+      id: updated.id,
+      name: updated.name,
+      path: updated.virtual_path,
+      is_dir: updated.is_dir,
+      size: updated.size,
+      mime_type: updated.mime_type,
+      project_id: updated.project_id,
+      modified_at: updated.updated_at,
+    }));
   }
 
   async statExtended(path: string, ctx?: FileOpContext): Promise<FileStatExtended> {
